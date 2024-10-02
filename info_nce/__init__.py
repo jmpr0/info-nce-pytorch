@@ -53,8 +53,8 @@ class InfoNCE(nn.Module):
         self.reduction = reduction
         self.negative_mode = negative_mode
 
-    def forward(self, query, positive_key, negative_keys=None):
-        return info_nce(query, positive_key, negative_keys,
+    def forward(self, query, positive_key, negative_keys=None, labels=None):
+        return info_nce(query, positive_key, negative_keys, labels,
                         temperature=self.temperature,
                         reduction=self.reduction,
                         negative_mode=self.negative_mode)
@@ -97,6 +97,7 @@ def info_nce(query, positive_key, negative_keys=None, labels=None, temperature=0
         # Cosine between combination of samples
         # Computes the dot product (cosine similarity) between query and positive_key
         logits = query @ transpose(positive_key)
+        # Matrix of multi-hot encoding, mapping same class samples to 1 and different to 0
         labels = (labels.unsqueeze(0) == labels.unsqueeze(1)).float()
 
         return F.binary_cross_entropy_with_logits(logits / temperature, labels, reduction=reduction)
