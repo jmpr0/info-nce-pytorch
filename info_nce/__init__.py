@@ -60,7 +60,7 @@ class InfoNCE(nn.Module):
                         negative_mode=self.negative_mode)
 
 
-def info_nce(query, positive_key, negative_keys=None, temperature=0.1, reduction='mean', negative_mode='unpaired'):
+def info_nce(query, positive_key, negative_keys=None, labels=None, temperature=0.1, reduction='mean', negative_mode='unpaired'):
     # Check input dimensionality.
     if query.dim() != 2:
         raise ValueError('<query> must have 2 dimensions.')
@@ -71,6 +71,9 @@ def info_nce(query, positive_key, negative_keys=None, temperature=0.1, reduction
             raise ValueError("<negative_keys> must have 2 dimensions if <negative_mode> == 'unpaired'.")
         if negative_mode == 'paired' and negative_keys.dim() != 3:
             raise ValueError("<negative_keys> must have 3 dimensions if <negative_mode> == 'paired'.")
+    if labels is not None:
+        if negative_mode != 'supervised':
+            raise Warning("Labels been passed with <negative_mode> != 'supervised': are you missing something?")
 
     # Check matching number of samples.
     if len(query) != len(positive_key):
@@ -88,6 +91,16 @@ def info_nce(query, positive_key, negative_keys=None, temperature=0.1, reduction
 
     # Normalize to unit vectors
     query, positive_key, negative_keys = normalize(query, positive_key, negative_keys)
+    if labels is not None:
+        # Supervised criterion
+
+        # Cosine between combination of samples
+        # Computes the dot product (cosine similarity) between query and positive_key
+        logits = query @ transpose(positive_key)
+        labels = (labels.unsqueeze(0) == labels.unsqueeze(1)).float()
+
+        return F.binary_cross_entropy_with_logits(logits / temperature, labels, reduction=reduction)
+
     if negative_keys is not None:
         # Explicit negative keys
 
